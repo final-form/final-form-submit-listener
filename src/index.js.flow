@@ -1,0 +1,5 @@
+// @flow
+import type { Decorator } from 'final-form'
+import type { Config } from './decorator'
+
+declare export default function createDecorator(config: Config): Decorator
