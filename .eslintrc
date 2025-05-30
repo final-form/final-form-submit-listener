@@ -1,6 +1,10 @@
 {
-  "extends": "react-app",
-  "rules": {
-    "jsx-a11y/href-no-hash": 0
+  "extends": ["eslint:recommended", "plugin:@typescript-eslint/recommended"],
+  "parser": "@typescript-eslint/parser",
+  "plugins": ["@typescript-eslint"],
+  "root": true,
+  "env": {
+    "node": true,
+    "es6": true
   }
 }
