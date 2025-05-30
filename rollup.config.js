@@ -1,10 +1,21 @@
 import resolve from 'rollup-plugin-node-resolve'
 import babel from 'rollup-plugin-babel'
-import flow from 'rollup-plugin-flow'
 import commonjs from 'rollup-plugin-commonjs'
-import { uglify } from 'rollup-plugin-uglify'
+import terser from '@rollup/plugin-terser'
 import replace from 'rollup-plugin-replace'
-import pkg from './package.json'
+import typescript from 'rollup-plugin-typescript2'
+import { createRequire } from 'module'
+
+const require = createRequire(import.meta.url)
+const pkg = require('./package.json')
+
+const makeExternalPredicate = (externalArr) => {
+  if (externalArr.length === 0) {
+    return () => false
+  }
+  const pattern = new RegExp(`^(${externalArr.join('|')})($|/)`)
+  return (id) => pattern.test(id)
+}
 
 const minify = process.env.MINIFY
 const format = process.env.FORMAT
@@ -15,18 +26,18 @@ const cjs = format === 'cjs'
 let output
 
 if (es) {
-  output = { file: `dist/final-form-submit-listener.es.js`, format: 'es' }
+  output = { file: pkg.module, format: 'es' }
 } else if (umd) {
   if (minify) {
     output = {
-      file: `dist/final-form-submit-listener.umd.min.js`,
+      file: 'dist/final-form-submit-listener.umd.min.js',
       format: 'umd'
     }
   } else {
-    output = { file: `dist/final-form-submit-listener.umd.js`, format: 'umd' }
+    output = { file: 'dist/final-form-submit-listener.umd.js', format: 'umd' }
   }
 } else if (cjs) {
-  output = { file: `dist/final-form-submit-listener.cjs.js`, format: 'cjs' }
+  output = { file: pkg.main, format: 'cjs' }
 } else if (format) {
   throw new Error(`invalid format specified: "${format}".`)
 } else {
@@ -34,55 +45,55 @@ if (es) {
 }
 
 export default {
-  input: 'src/index.js',
+  input: 'src/index.ts',
   output: Object.assign(
     {
       name: 'final-form-submit-listener',
-      exports: 'named'
+      exports: 'named',
+      globals: {
+        'final-form': 'finalForm',
+        '@babel/runtime/helpers/': 'babelHelpers'
+      }
     },
     output
   ),
-  external: umd
-    ? []
-    : [
-        ...Object.keys(pkg.dependencies || {}),
-        ...Object.keys(pkg.peerDependencies || {})
-      ],
+  external: makeExternalPredicate([
+    ...(umd
+      ? Object.keys(pkg.peerDependencies || {})
+      : [
+          ...Object.keys(pkg.dependencies || {}),
+          ...Object.keys(pkg.peerDependencies || {})
+        ]),
+    /@babel\/runtime\/helpers\//
+  ]),
   plugins: [
-    resolve({ jsnext: true, main: true }),
-    flow(),
-    commonjs({ include: 'node_modules/**' }),
+    typescript({
+      typescript: require('typescript'),
+      tsconfig: './tsconfig.json',
+      useTsconfigDeclarationDir: true,
+      clean: true
+    }),
+    resolve({
+      mainFields: ['module'],
+      extensions: ['.ts', '.tsx', '.js', '.jsx']
+    }),
+    commonjs({
+      include: 'node_modules/**',
+      extensions: ['.ts', '.tsx', '.js', '.jsx']
+    }),
     babel({
       exclude: 'node_modules/**',
-      babelrc: false,
+      extensions: ['.ts', '.tsx', '.js', '.jsx'],
       runtimeHelpers: true,
-      presets: [
-        [
-          '@babel/preset-env',
-          {
-            modules: false,
-            loose: true
-          }
-        ],
-        '@babel/preset-flow'
-      ],
       plugins: [
-        ['@babel/plugin-transform-runtime', { useESModules: !cjs }],
-        '@babel/plugin-transform-flow-strip-types',
-        '@babel/plugin-syntax-dynamic-import',
-        '@babel/plugin-syntax-import-meta',
-        '@babel/plugin-proposal-class-properties',
-        '@babel/plugin-proposal-json-strings',
         [
-          '@babel/plugin-proposal-decorators',
+          '@babel/plugin-transform-runtime',
           {
-            legacy: true
+            regenerator: true,
+            helpers: true,
+            useESModules: true
           }
-        ],
-        '@babel/plugin-proposal-function-sent',
-        '@babel/plugin-proposal-export-namespace-from',
-        '@babel/plugin-proposal-numeric-separator',
-        '@babel/plugin-proposal-throw-expressions'
+        ]
       ]
     }),
     umd
@@ -92,6 +103,6 @@ export default {
           )
         })
       : null,
-    minify ? uglify() : null
+    minify ? terser() : null
   ].filter(Boolean)
 }

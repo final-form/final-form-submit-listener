@@ -1,16 +1,15 @@
-// @flow
-import type { Decorator, FormApi } from 'final-form'
+import { Decorator, FormApi } from 'final-form'
 
-export type Config = {
-  beforeSubmit?: FormApi => void | boolean,
-  afterSubmitSucceeded?: FormApi => void,
-  afterSubmitFailed?: FormApi => void
+export interface Config {
+  beforeSubmit?: (form: FormApi) => void | boolean
+  afterSubmitSucceeded?: (form: FormApi) => void
+  afterSubmitFailed?: (form: FormApi) => void
 }
 
-const maybeAwait = (maybePromise, callback) => {
-  if (maybePromise && typeof maybePromise.then === 'function') {
+const maybeAwait = (maybePromise: unknown, callback: () => void): void => {
+  if (maybePromise && typeof (maybePromise as Promise<unknown>).then === 'function') {
     // async
-    maybePromise.then(callback)
+    (maybePromise as Promise<unknown>).then(callback)
   } else {
     // sync
     callback()
@@ -50,4 +49,4 @@ const createDecorator = ({
   }
 }
 
-export default createDecorator
+export default createDecorator 

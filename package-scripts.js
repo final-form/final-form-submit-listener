@@ -1,19 +1,11 @@
-const npsUtils = require('nps-utils')
+import { series, concurrent, rimraf } from 'nps-utils'
 
-const series = npsUtils.series
-const concurrent = npsUtils.concurrent
-const rimraf = npsUtils.rimraf
-const crossEnv = npsUtils.crossEnv
-
-module.exports = {
+export default {
   scripts: {
     test: {
-      default: crossEnv('NODE_ENV=test jest --coverage'),
-      update: crossEnv('NODE_ENV=test jest --coverage --updateSnapshot'),
-      watch: crossEnv('NODE_ENV=test jest --watch'),
-      codeCov: crossEnv(
-        'cat ./coverage/lcov.info | ./node_modules/codecov.io/bin/codecov.io.js'
-      ),
+      default: 'cross-env NODE_ENV=test jest --coverage',
+      update: 'cross-env NODE_ENV=test jest --coverage --updateSnapshot',
+      watch: 'cross-env NODE_ENV=test jest --watch',
       size: {
         description: 'check the size of the bundle',
         script: 'bundlesize'
@@ -28,26 +20,30 @@ module.exports = {
           'build.cjs',
           'build.umd.main',
           'build.umd.min',
-          'copyTypes'
+          'build.types'
         )
       ),
       es: {
-        description: 'run the build with rollup (uses rollup.config.js)',
+        description: 'run the build with ES modules',
         script: 'rollup --config --environment FORMAT:es'
       },
       cjs: {
-        description: 'run rollup build with CommonJS format',
+        description: 'run the build with CommonJS',
         script: 'rollup --config --environment FORMAT:cjs'
       },
       umd: {
         min: {
-          description: 'run the rollup build with sourcemaps',
+          description: 'run the build with UMD and minify it',
           script: 'rollup --config --sourcemap --environment MINIFY,FORMAT:umd'
         },
         main: {
-          description: 'builds the cjs and umd files',
+          description: 'run the build with UMD',
           script: 'rollup --config --sourcemap --environment FORMAT:umd'
         }
+      },
+      types: {
+        description: 'build the TypeScript type definitions',
+        script: 'tsc --emitDeclarationOnly'
       },
       andTest: series.nps('build', 'test.size')
     },
@@ -55,19 +51,18 @@ module.exports = {
       description: 'Generates table of contents in README',
       script: 'doctoc README.md'
     },
-    copyTypes: npsUtils.copy('src/*.js.flow dist'),
     lint: {
       description: 'lint the entire project',
       script: 'eslint .'
     },
-    flow: {
-      description: 'flow check the entire project',
-      script: 'flow check'
+    prettier: {
+      description: 'Runs prettier on everything',
+      script: 'prettier --write "**/*.([jt]s*)"'
     },
     validate: {
       description:
         'This runs several scripts to make sure things look good before committing or on clean install',
-      default: concurrent.nps('lint', 'flow', 'build.andTest', 'test')
+      default: concurrent.nps('lint', 'build.andTest', 'test')
     }
   },
   options: {
