@@ -1,6 +1,6 @@
 {
   "name": "final-form-submit-listener",
-  "version": "2.0.0-0",
+  "version": "2.0.0",
   "description": "🏁 Final Form decorator that provides callback hooks for submitting",
   "type": "module",
   "main": "dist/final-form-submit-listener.cjs.js",
